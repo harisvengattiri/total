@@ -1,0 +1,40 @@
+table
+{
+    page-break-inside:auto;
+    border-collapse: collapse;
+    width: 100%;
+    border: 1px solid black;
+    padding: 2px;
+    font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;
+}
+
+tr, th, td {
+    page-break-inside:avoid; page-break-after:auto ;
+    height: 20px;
+    border: 1px solid black;
+    padding: 5px;
+    font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;
+}
+
+tr, th, td {
+    page-break-inside:avoid; page-break-after:auto ;
+    height: 20px;
+    border: 1px solid black;
+    padding: 5px;
+    font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;
+}
+
+p,li {
+     word-spacing: 2px;
+     line-height: 140%;
+     font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;
+     font-size: 12px;
+}
+body, h1 {
+     font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;
+     font-size: 12px;
+}
+    .wrapper{position:relative; font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;}
+    .right,.left{width:50%; position:absolute;}
+    .right{right:0;}
+    .left{left:0;}
