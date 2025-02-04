@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once("database.php");
+require_once("databaseNew.php");
 
 if (!isset($_SESSION['userid'])) {
     require_once("login.php");
