@@ -81,7 +81,7 @@
               <span class="logmod__heading-subtitle">Enter your email and password <strong>to sign in</strong></span>
             </div>
             <div class="logmod__form">
-              <form action="<?php echo BASEURL; ?>/login-check" method="post" class="simform">
+              <form action="<?php echo BASEURL; ?>/controllers/Authenticate" method="post" class="simform">
                 <div class="sminputs">
                   <div class="input full">
                     <label class="string optional" for="user-name">User Name*</label>
