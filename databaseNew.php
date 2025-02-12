@@ -80,7 +80,19 @@ function prepareLogQuery($sql) {
 
 // AUTHENTICATION SECTION STARTS
 function getConnection() {
-    return mysqli_connect(getenv('DB_HOST'), getenv('DB_USERNAME'), getenv('DB_PASSWORD'), getenv('DB_DATABASE'));
+    $dsn = "mysql:host=" . getenv('DB_HOST') . ";dbname=" . getenv('DB_DATABASE') . ";charset=utf8mb4";
+    $username = getenv('DB_USERNAME');
+    $password = getenv('DB_PASSWORD');
+    try {
+        $pdo = new PDO($dsn, $username, $password, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        return $pdo;
+    } catch (PDOException $e) {
+        die("Database connection failed: " . $e->getMessage());
+    }
 }
 function escapeString($string) {
     return mysqli_real_escape_string(getConnection(), $string);
