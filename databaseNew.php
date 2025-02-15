@@ -1,5 +1,5 @@
 <?php
-require_once ('config.php');
+require_once ($_SERVER['DOCUMENT_ROOT'].'/total/config.php');
 
 // SOME COMMONLY USED FUNCTIONS STARTS
 function prepareInsertQuery($table, $data) {
@@ -33,7 +33,7 @@ function prepareGetDetailQuery($table, $id) {
 function getDetails($table, $id) {
     checkAccountExist($table, 'id', $id);
     $result = getConnection()->query(prepareGetDetailQuery($table, $id));
-    $row = mysqli_fetch_assoc($result);
+    $row = $result->fetch();
     if(!$row) {
         throw new Exception();
     }
@@ -43,7 +43,7 @@ function getList($table) {
     $sql = "SELECT * FROM `$table` ORDER BY id DESC LIMIT 0,100";
     $result = getConnection()->query($sql);
     $list = [];
-    while ($row = mysqli_fetch_array($result)) {
+    while ($row = $result->fetch()) {
         $list[] = $row;
     }
     return $list;
@@ -53,7 +53,7 @@ function getItemsById($table, $feild, $id) {
     checkAccountExist($table, $feild, $id);
     $result = getConnection()->query($sql);
     $items = [];
-    while ($row = mysqli_fetch_array($result)) {
+    while ($row = $result->fetch()) {
         $items[] = $row;
     }
     return $items;
@@ -62,7 +62,7 @@ function generateColumnsFromKeys($data) {
     return implode(',', generateKeysFromData($data));
 }
 function generateEntryFromValues($data) {
-    return implode(',', generateValuesFromData($data));
+    return implode(',', generateValuesFromData(escapeString($data)));
 }
 function generateKeysFromData($data) {
     return array_keys($data);
@@ -71,7 +71,7 @@ function generateValuesFromData($data) {
     return array_values($data);
 }
 function getInsertId() {
-    return getConnection()->insert_id;
+    return getConnection()->lastInsertId();
 }
 function prepareLogQuery($sql) {
     return escapeString($sql);
@@ -95,7 +95,7 @@ function getConnection() {
     }
 }
 function escapeString($string) {
-    return mysqli_real_escape_string(getConnection(), $string);
+    return isset($string) ? trim($string) : null;
 }
 function hashPassword($password) {
     return md5($password);  
@@ -106,15 +106,17 @@ function prepareUserQuery($user, $pass) {
     return "SELECT * FROM `users` WHERE `username`='$username' AND `pwd`='$pwd'";
 }
 function checkUserExistence($user, $pass) {
-    $result = mysqli_query(getConnection(), prepareUserQuery($user, $pass));
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare(prepareUserQuery($user, $pass));
+    $query->execute();
+    $row = $query->fetchAll();
     if(!$row) {
         throw new Exception('User with this username and password does not exist');
     }
 }
 function getUserInfo($user, $password) {
-    $result = mysqli_query(getConnection(), prepareUserQuery($user, $password));
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare(prepareUserQuery($user, $password));
+    $query->execute();
+    $row = $query->fetchAll();
     if(!$row) {
         throw new Exception('Unable to fetch user details');
     }
@@ -129,7 +131,7 @@ function setUserSession($userDetails) {
 }
 function trackLoginAttempt($username, $status) {
     $ip = $_SERVER['REMOTE_ADDR'];
-    $ip_location = findMyIPDetails();  
+    $ip_location = findMyIPDetails();
     $now = date("d/m/Y h:i:s a");
 
     $sql = "INSERT INTO login_log (ip, time, location, username, status) 
@@ -159,8 +161,9 @@ function editCustomer($data) {
 function getContactNameFromId($id) {
     $sql = "SELECT name FROM `customers` WHERE `id` = '$id'";
     checkAccountExist('customers','id',$id);
-    $result = getConnection()->query($sql);
-    $fetch = mysqli_fetch_array($result);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $fetch = $query->fetchAll();
     $contact_name = $fetch['name'];
     return $contact_name;
 }
@@ -221,7 +224,7 @@ function getQuotationItemDetails($qn) {
 }
 function addQuotation($data) {
     insert('quotation', $data);
-    $quotation_id = getConnection()->insert_id;
+    $quotation_id = getConnection()->lastInsertId();
         $item = $data["item"];
         $quantity = $data["quantity"];
         $unit = $data["unit"];
@@ -257,7 +260,7 @@ function editQuotation($data) {
         $count = sizeof($item);
         $sum = 0;
         for ($i = 0; $i < $count; $i++) {
-            $item[$i] = mysqli_real_escape_string(getConnection(), $item[$i]);
+            $item[$i] = escapeString(getConnection(), $item[$i]);
             $quantity[$i] = ($quantity[$i] != NULL) ? $quantity[$i] : 0;
             $unit[$i] = ($unit[$i] != NULL) ? $unit[$i] : 0;
             $total[$i] = $quantity[$i] * $unit[$i];
@@ -280,7 +283,7 @@ function deleteQuotation($data) {
     checkAccountExist('quotation','id',$quotation_id);
     getConnection()->query($sql);
     deleteQuotationItems($quotation_id);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('delete','QNO',$quotation_id,$logQuery); 
 }
 
@@ -294,8 +297,9 @@ function deleteQuotationItems($qn) {
 function getOrderDetails($ord) {
     $sql = "SELECT * FROM `sales_order` WHERE `id` = $ord";
     checkAccountExist('sales_order','id',$ord);
-    $result = getConnection()->query($sql);
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $row = $query->fetchAll();
     if(!$row) {
         throw new Exception();
     }
@@ -307,7 +311,7 @@ function getOrderItemDetails($ord) {
     checkAccountExist('order_item','order_id',$ord);
     $result = getConnection()->query($sql);
     $order_items = [];
-    while ($row = mysqli_fetch_array($result)) {
+    while ($row = $result->fetch()) {
         $order_items[] = $row;
     }
     return $order_items;
@@ -317,7 +321,7 @@ function getOrderFromJW($jw) {
     $sql = "SELECT id FROM `sales_order` WHERE `jw` = '$jw'";
     checkAccountExist('sales_order','jw',$jw);
     $result = getConnection()->query($sql);
-    $row = mysqli_fetch_array($result);
+    $row = $result->fetch();
     return $row['id'];
 }
 
@@ -325,7 +329,7 @@ function addOrder($data) {
     $sql = "INSERT INTO `sales_order` (`customer`,`token`,`date`,`jw`)
             VALUES ('{$data["customer"]}','{$data["token"]}','{$data["date"]}','{$data["jw"]}')";
     getConnection()->query($sql);
-    $order_id = getConnection()->insert_id;
+    $order_id = getConnection()->lastInsertId();
         $item = $data["item"];
         $quantity = $data["quantity"];
         $remark = $data["remark"];
@@ -346,7 +350,7 @@ function addOrder($data) {
         $grand = $sum*1.05;
         $sql2 = "UPDATE `sales_order` SET `subtotal`='$sum',`vat`='$vat',`grand`='$grand' WHERE id='$order_id'";
         getConnection()->query($sql2);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('add','DO',$order_id,$logQuery);
 }
 
@@ -363,7 +367,7 @@ function editOrder($data) {
         $count = sizeof($item);
         $sum = 0;
         for ($i = 0; $i < $count; $i++) {
-            $item[$i] = mysqli_real_escape_string(getConnection(), $item[$i]);
+            $item[$i] = escapeString(getConnection(), $item[$i]);
             $quantity[$i] = ($quantity[$i] != NULL) ? $quantity[$i] : 0;
                 $item_details = getItemDetails($item[$i]);
                 $unit[$i] = $item_details['approx_price'];
@@ -378,7 +382,7 @@ function editOrder($data) {
         $grand = $sum*1.05;
         $sql2 = "UPDATE `sales_order` SET `subtotal`='$sum',`vat`='$vat',`grand`='$grand' WHERE id='$order_id'";
         getConnection()->query($sql2);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('edit','DO',$order_id,$logQuery);
 }
 
@@ -389,7 +393,7 @@ function deleteOrder($data) {
     checkAccountExist('sales_order','id',$order_id);
     getConnection()->query($sql);
     deleteOrderItems($order_id);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('delete','DO',$order_id,$logQuery);
 }
 
@@ -401,7 +405,7 @@ function deleteOrderItems($order_id) {
 function getTotalOrderQuantity($order_id) {
     $sql = "SELECT SUM(quantity) as TotalOrderQuantity FROM `order_item` WHERE `order_id`='$order_id'";
     $result = getConnection()->query($sql);
-    $row = mysqli_fetch_array($result);
+    $row = $result->fetch();
     return $row['TotalOrderQuantity'];
 }
 
@@ -410,7 +414,7 @@ function getTotaldeliverQuantity($id, $type) {
 
     $sql = "SELECT SUM(quantity) as TotalDeliverQuantity FROM `delivery_item` WHERE `$column`='$id'";
     $result = getConnection()->query($sql);
-    $row = mysqli_fetch_array($result);
+    $row = $result->fetch();
     return $row['TotalDeliverQuantity'];
 }
 
@@ -434,8 +438,9 @@ function getRemarkOfOrderItem($remark) {
 function getDeliveryDetails($delivery) {
     $sql = "SELECT * FROM `delivery_note` WHERE `id` = $delivery";
     checkAccountExist('delivery_note','id',$delivery);
-    $result = getConnection()->query($sql);
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $row = $query->fetchAll();
     if(!$row) {
         throw new Exception();
     }
@@ -447,7 +452,7 @@ function getDeliveryItemDetails($delivery) {
     checkAccountExist('delivery_item','delivery_id',$delivery);
     $result = getConnection()->query($sql);
     $delivery_items = [];
-    while ($row = mysqli_fetch_array($result)) {
+    while ($row = $result->fetch()) {
         $delivery_items[] = $row;
     }
     return $delivery_items;
@@ -474,13 +479,13 @@ function addDeliveryNote($data) {
     $sql = "INSERT INTO `delivery_note` (`customer`,`token`,`date`,`attn`,`transportation`,`vehicle`)
             VALUES ('{$data["customer"]}','{$data["token"]}','{$data["date"]}','{$data["attention"]}','{$data["transportation"]}','{$data["vehicle"]}')";
     getConnection()->query($sql);
-    $delivery_id = getConnection()->insert_id;
+    $delivery_id = getConnection()->lastInsertId();
         $sum = 0;
         for ($i = 0; $i < $item_count; $i++) {
         $quantity[$i] = ($quantity[$i] != NULL) ? $quantity[$i] : 0;
             if ($quantity[$i] != 0) {
                 list($item[$i], $jw[$i], $remark[$i]) = explode(',', $itemDetails[$i]);
-                $item[$i] = mysqli_real_escape_string(getConnection(), $item[$i]);
+                $item[$i] = escapeString(getConnection(), $item[$i]);
                     $item_details = getItemDetails($item[$i]);
                     $unit[$i] = $item_details['approx_price'];
                 $order[$i] = getOrderFromJW($jw[$i]);
@@ -498,7 +503,7 @@ function addDeliveryNote($data) {
         $sql2 = "UPDATE `delivery_note` SET `subtotal`='$sum', `vat`='$vat', `grand`='$grand', `grand_total`='$grand_total' WHERE id='$delivery_id'";
         getConnection()->query($sql2);
         checkOrderFlag($jws);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('add','DN',$delivery_id,$logQuery);
 }
 
@@ -513,7 +518,7 @@ function deleteDeliveryNote($data) {
     checkAccountExist('delivery_note','id',$delivery_id);
     getConnection()->query($sql);
     deleteDeliveryItems($delivery_id);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('delete','DN',$delivery_id,$logQuery);
 }
 
@@ -531,8 +536,9 @@ function getItemDeliveryBalance($order,$item,$status) {
     $sql = "SELECT o.quantity - COALESCE(SUM(d.quantity), 0) AS balance
         FROM `order_item` o LEFT JOIN `delivery_item` d ON o.order_id = d.order_id AND o.item = d.item AND o.remark = d.order_remark
         WHERE o.order_id = '$order' AND o.item = '$item' AND o.remark = '$status'";
-    $result = mysqli_query(getConnection(), $sql);
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $row = $query->fetchAll();
 
     return $row['balance'];
 }
@@ -544,8 +550,9 @@ function checkOrderFlag($jws) {
     foreach ($jws as $jw) {
         $order = getOrderFromJW($jw);
         $sql = "SELECT item,remark FROM `order_item` WHERE `order_id`='$order'";
-        $result = mysqli_query(getConnection(), $sql);
-        while($row = mysqli_fetch_assoc($result)) {
+        $query = getConnection()->prepare($sql);
+        $query->execute();
+        while($row = $query->fetchAll()) {
             $item = $row['item'];
             $status = $row['remark'];
             $balance = getItemDeliveryBalance($order,$item,$status);
@@ -588,8 +595,9 @@ function checkInvoiced($id, $section) {
     }
 
     $sql = "SELECT `invoiced` FROM `$table` WHERE `id`='$id'";
-    $result = mysqli_query(getConnection(), $sql);
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $row = $query->fetchAll();
     if($row['invoiced'] == 0) {
         return 'No';
     } else {
@@ -604,7 +612,9 @@ function updateInvoicedInDelivery($delivery,$process) {
         $invoiced = 0;
     }
     $sql = "UPDATE `delivery_note` SET `invoiced` = $invoiced WHERE `id`=$delivery";
-    getConnection()->query($sql);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+
 }
 
 function groupDelivery($groupedData,$item,$order,$remark,$order_balance,$quantity) {
@@ -655,8 +665,9 @@ function getRemarkOfdeliveryItem($remark) {
 function getReturnDetails($returnId) {
     $sql = "SELECT * FROM `goods_return_note` WHERE `id` = $returnId";
     checkAccountExist('goods_return_note','id',$returnId);
-    $result = getConnection()->query($sql);
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $row = $query->fetchAll();
     if(!$row) {
         throw new Exception();
     }
@@ -668,7 +679,7 @@ function getReturnItemDetails($returnId) {
     checkAccountExist('goods_return_item','return_id',$returnId);
     $result = getConnection()->query($sql);
     $return_items = [];
-    while ($row = mysqli_fetch_array($result)) {
+    while ($row = $result->fetch()) {
         $return_items[] = $row;
     }
     return $return_items;
@@ -697,7 +708,7 @@ function addReturnNote($data) {
     $sql = "INSERT INTO `goods_return_note` (`customer`,`token`,`delivery`,`date`,`attn`,`transportation`)
             VALUES ('{$data["customer"]}','{$data["token"]}','{$dn}','{$data["date"]}','{$data["attention"]}','{$data["transportation"]}')";
     getConnection()->query($sql);
-    $return_id = getConnection()->insert_id;
+    $return_id = getConnection()->lastInsertId();
 
         $sum = 0;
         for ($i = 0; $i < $item_count; $i++) {
@@ -723,7 +734,7 @@ function addReturnNote($data) {
         $sql2 = "UPDATE `goods_return_note` SET `subtotal`='$sum', `vat`='$vat', `grand`='$grand', `grand_total`='$grand_total' WHERE id='$return_id'";
         getConnection()->query($sql2);
         updateGoodsReturnInDelivery($dn,'Add');
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('add','GR',$return_id,$logQuery);
 }
 
@@ -740,7 +751,7 @@ function deleteReturnNote($data) {
     getConnection()->query($sql);
     deleteReturnItems($return_id);
     updateGoodsReturnInDelivery($dn,'Remove');
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('delete','GR',$return_id,$logQuery);
 }
 
@@ -764,7 +775,7 @@ function getDeliveryFromReturn($return_id) {
     $sql = "SELECT delivery FROM `goods_return_note` WHERE `id` = '$return_id'";
     checkAccountExist('goods_return_note','id',$return_id);
     $result = getConnection()->query($sql);
-    $row = mysqli_fetch_array($result);
+    $row = $result->fetch();
     return $row['delivery'];
 }
 
@@ -791,8 +802,9 @@ function validateDeliveryReturns($groupedData) {
 
 function validateItemsWithDelivery(&$groupedData, $dn) {
     $sql = "SELECT COUNT(item) AS delivery_item_count FROM `delivery_item` WHERE `delivery_id`='$dn'";
-    $query = getConnection()->query($sql);
-    $result = mysqli_fetch_array($query);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $result = $query->fetchAll();
     $delivery_item_count = $result['delivery_item_count'];
     $return_item_count = count($groupedData);
 
@@ -846,8 +858,9 @@ function updateInvoicedInGRN($return,$process) {
 function getInvoiceDetails($invoice) {
     $sql = "SELECT * FROM `invoice` WHERE `id` = $invoice";
     checkAccountExist('invoice','id',$invoice);
-    $result = getConnection()->query($sql);
-    $row = mysqli_fetch_assoc($result);
+    $query = getConnection()->prepare($sql);
+    $query->execute();
+    $row = $query->fetchAll();
     if(!$row) {
         throw new Exception();
     }
@@ -859,7 +872,7 @@ function getInvoiceItemDetails($invoice) {
     checkAccountExist('invoice_item','invoice_id',$invoice);
     $result = getConnection()->query($sql);
     $invoice_items = [];
-    while ($row = mysqli_fetch_array($result)) {
+    while ($row = $result->fetch()) {
         $invoice_items[] = $row;
     }
     return $invoice_items;
@@ -876,7 +889,7 @@ function addInvoice($data) {
     $sql = "INSERT INTO `invoice` (`customer`,`token`,`date`,`attn`)
             VALUES ('{$data["customer"]}','{$data["token"]}','{$data["date"]}','{$data["attention"]}')";
     getConnection()->query($sql);
-    $invoice_id = getConnection()->insert_id;
+    $invoice_id = getConnection()->lastInsertId();
 
         $sum = 0;
         for ($i = 0; $i < $item_count; $i++) {
@@ -898,7 +911,7 @@ function addInvoice($data) {
         $grand = $sum*1.05;
         $sql2 = "UPDATE `invoice` SET `subtotal`='$sum', `vat`='$vat', `grand`='$grand' WHERE id='$invoice_id'";
         getConnection()->query($sql2);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('add','INV',$invoice_id,$logQuery);
 }
 
@@ -913,7 +926,7 @@ function deleteInvoice($data) {
     checkAccountExist('invoice','id',$invoice_id);
     getConnection()->query($sql);
     deleteInvoiceItems($invoice_id);
-    $logQuery = mysqli_real_escape_string(getConnection(),$sql);
+    $logQuery = escapeString(getConnection(),$sql);
     logActivity('delete','INV',$invoice_id,$logQuery);
 }
 
@@ -945,9 +958,10 @@ function logActivity($process,$code,$id,$logQuery) {
 // CHECK EXISTANCE FOR EDIT AND DELETE
 function checkAccountExist($table,$column,$id) {
     $sqlIdCheck = "SELECT * FROM `$table` WHERE `$column` = '$id'";
-    $query = getConnection()->query($sqlIdCheck);
-    $num_rows = mysqli_num_rows($query);
-    if(!$num_rows) {
+    $query = getConnection()->prepare($sqlIdCheck);
+    $query->execute();
+    $row = $query->fetchAll();
+    if(!$row) {
         throw new Exception();
     }
 }
