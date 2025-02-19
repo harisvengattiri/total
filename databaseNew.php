@@ -472,7 +472,14 @@ function addDeliveryNote($data) {
     $groupedData = [];
     for ($i = 0; $i < $item_count; $i++) {
         list($item[$i], $jw[$i], $remark[$i]) = explode(',', $itemDetails[$i]);
-        $groupedData = groupDelivery($groupedData,$item[$i],$jw[$i],$remark[$i],$order_balance[$i],$quantity[$i]);
+        $data = [
+            'item' => $item[$i],
+            'order' => $jw[$i],
+            'remark' => $remark[$i],
+            'order_balance' => $order_balance[$i],
+            'quantity' => $quantity[$i],
+        ];
+        $groupedData = groupDelivery($data);
     }
     validateDelivery($groupedData);
 
@@ -617,17 +624,18 @@ function updateInvoicedInDelivery($delivery,$process) {
 
 }
 
-function groupDelivery($groupedData,$item,$order,$remark,$order_balance,$quantity) {
-    $key = $item . '_' . $order. '_' . $remark;
+function groupDelivery($data) {
+    static $groupedData = [];
+    $key = $data['item'] . '_' . $data['order']. '_' . $data['remark'];
     if (!isset($groupedData[$key])) {
         $groupedData[$key] = [
-            'item' => $item,
-            'order' => $order,
-            'order_balance' => $order_balance,
+            'item' => $data['item'],
+            'order' => $data['order'],
+            'order_balance' => $data['order_balance'],
             'total_delivered_quantity' => 0,
         ];
     }
-    $groupedData[$key]['total_delivered_quantity'] += $quantity;
+    $groupedData[$key]['total_delivered_quantity'] += $data['quantity'];
     return $groupedData;
 }
 
